@@ -13,6 +13,6 @@ for title, link in entries[:100]:
     fe = fg.add_entry()
     fe.title(title)
     fe.link(href=link)
-    fe.pubDate(datetime.utcnow())
+    fe.pubDate(datetime.now(timezone.utc))  # ✅ FIXED
 
 fg.rss_file("feed.xml")

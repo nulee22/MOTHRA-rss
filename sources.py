@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 KEYWORDS = [
-    "MOTHRA telescope",
+    "MOTHRA",
     "Optical Telephoto Hyperspectral Robotic Array",
 ]
 

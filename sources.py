@@ -8,7 +8,6 @@ KEYWORDS = [
     "Optical Telephoto Hyperspectral Robotic Array",
 ]
 
-def fetch_google_news():
 import feedparser
 
 def fetch_google_news():

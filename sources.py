@@ -9,16 +9,17 @@ KEYWORDS = [
 ]
 
 def fetch_google_news():
+import feedparser
+
+def fetch_google_news():
     items = []
     for kw in KEYWORDS:
-        url = f"https://news.google.com/search?q={kw.replace(' ', '+')}"
-        r = requests.get(url, headers=HEADERS)
-        soup = BeautifulSoup(r.text, "html.parser")
+        url = f"https://news.google.com/rss/search?q={kw.replace(' ', '+')}"
+        feed = feedparser.parse(url)
 
-        for a in soup.select("article h3 a"):
-            title = a.text
-            link = "https://news.google.com" + a["href"][1:]
-            items.append((title, link))
+        for entry in feed.entries:
+            items.append((entry.title, entry.link))
+
     return items
 
 def fetch_reddit():

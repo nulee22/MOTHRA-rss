@@ -1,5 +1,5 @@
 from feedgen.feed import FeedGenerator
-from datetime import datetime
+from datetime import datetime, timezone
 from sources import fetch_all
 
 fg = FeedGenerator()

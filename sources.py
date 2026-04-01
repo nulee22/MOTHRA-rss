@@ -5,14 +5,16 @@ from datetime import datetime, timezone, timedelta
 HEADERS = {"User-Agent": "mothra-bot"}
 
 # -----------------------------
-# SEARCH QUERIES
+# SEARCH QUERIES (broad intake)
 # -----------------------------
 SEARCH_QUERIES = [
     "MOTHRA telescope",
     "Optical Telephoto Hyperspectral Robotic Array",
     "Gerko telescope",
     "van Dokkum telescope",
-    "Dragonfly telescope array"
+    "Dragonfly telescope",
+    "cosmic web telescope",
+    "space telescope array"
 ]
 
 # -----------------------------
@@ -48,7 +50,7 @@ def fetch_google_news():
 
 
 # -----------------------------
-# DuckDuckGo (optional fallback)
+# DuckDuckGo fallback
 # -----------------------------
 def fetch_general_web():
     items = []
@@ -69,7 +71,7 @@ def fetch_general_web():
 
 
 # -----------------------------
-# BOOLEAN FILTER
+# BOOLEAN FILTER (YOUR LOGIC)
 # -----------------------------
 GROUP_A = [
     "mothra",
@@ -80,7 +82,9 @@ GROUP_A = [
 GROUP_B = [
     "telescope",
     "van dokkum",
-    "dragonfly"
+    "dragonfly",
+    "space",
+    "cosmic"
 ]
 
 EXCLUDE = [
@@ -95,8 +99,8 @@ def is_relevant(text):
     t = text.lower()
 
     return (
-        any(term in t for term in GROUP_A)
-        and any(term in t for term in GROUP_B)
+        any(term in t for term in GROUP_A)      # (A OR B OR C)
+        and any(term in t for term in GROUP_B)  # AND (X OR Y OR Z...)
         and not any(term in t for term in EXCLUDE)
     )
 
@@ -122,13 +126,13 @@ def deduplicate(items):
 def fetch_all():
     results = []
 
-    for fn in [fetch_google_news, fetch_general_web]:  # ✅ Reddit removed
+    for fn in [fetch_google_news, fetch_general_web]:
         try:
             results.extend(fn())
         except Exception as e:
             print("Error:", fn.__name__, e)
 
-    # Apply Boolean filter
+    # Apply Boolean logic
     results = [item for item in results if is_relevant(item[0])]
 
     # Deduplicate

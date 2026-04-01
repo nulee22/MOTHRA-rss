@@ -56,22 +56,25 @@ def fetch_duckduckgo():
     items = []
 
     for q in SEARCH_QUERIES:
-        url = f"https://duckduckgo.com/html/?q={q.replace(' ', '+')}"
-        r = requests.get(url, headers=HEADERS)
 
-        soup = BeautifulSoup(r.text, "html.parser")
+        # 🔁 paginate (first 2 pages)
+        for start in [0, 30]:
+            url = f"https://duckduckgo.com/html/?q={q.replace(' ', '+')}&s={start}"
 
-        for result in soup.select(".result"):
-            title_tag = result.select_one(".result__a")
+            r = requests.get(url, headers=HEADERS)
+            soup = BeautifulSoup(r.text, "html.parser")
 
-            if not title_tag:
-                continue
+            for result in soup.select(".result"):
+                title_tag = result.select_one(".result__a")
 
-            title = title_tag.get_text(strip=True)
-            link = title_tag.get("href")
+                if not title_tag:
+                    continue
 
-            if link and link.startswith("http"):
-                items.append((title, link))
+                title = title_tag.get_text(strip=True)
+                link = title_tag.get("href")
+
+                if link and link.startswith("http"):
+                    items.append((title, link))
 
     return items
 

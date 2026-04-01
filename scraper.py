@@ -9,10 +9,13 @@ fg.description("Tracking MOTHRA telescope coverage")
 
 entries = fetch_all()
 
-for title, link in entries[:100]:
+print("Entries found:", len(entries))
+
+for text, link in entries[:100]:
     fe = fg.add_entry()
-    fe.title(title)
+    fe.title(text[:200])
     fe.link(href=link)
-    fe.pubDate(datetime.now(timezone.utc))  # ✅ FIXED
+    fe.pubDate(datetime.now(timezone.utc))
 
 fg.rss_file("feed.xml")
+print("Feed generated")

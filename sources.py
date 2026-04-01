@@ -10,8 +10,9 @@ HEADERS = {"User-Agent": "mothra-bot"}
 # -----------------------------
 SEARCH_QUERIES = [
     "MOTHRA telescope",
-    "Optical Telephoto Hyperspectral Robotic Array",
-    "Dragonfly telescope",
+    "MOTHRA Canon lenses telescope",
+    "all lens telescope cosmic web",
+    "Dragonfly telescope array",
     "van Dokkum telescope",
     "cosmic web telescope"
 ]

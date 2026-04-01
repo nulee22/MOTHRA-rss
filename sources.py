@@ -1,21 +1,14 @@
 import requests
 import feedparser
 from datetime import datetime, timezone, timedelta
+from bs4 import BeautifulSoup
 
 HEADERS = {"User-Agent": "mothra-bot"}
 
 # -----------------------------
-# SEARCH QUERIES (broad intake)
+# BOOLEAN SEARCH QUERY
 # -----------------------------
-SEARCH_QUERIES = [
-    "MOTHRA telescope",
-    "Optical Telephoto Hyperspectral Robotic Array",
-    "Gerko telescope",
-    "van Dokkum telescope",
-    "Dragonfly telescope",
-    "cosmic web telescope",
-    "space telescope array"
-]
+SEARCH_QUERY = '(("Optical Telephoto Hyperspectral Robotic Array" OR MOTHRA OR Gerko) AND (space OR cosmic OR universe OR telescope)) -Godzilla -MACS0416'
 
 # -----------------------------
 # Time filter (last 30 days)
@@ -31,67 +24,71 @@ def is_recent(published_time):
 def fetch_google_news():
     items = []
 
-    for q in SEARCH_QUERIES:
-        url = f"https://news.google.com/rss/search?q={q.replace(' ', '+')}+when:30d"
-        feed = feedparser.parse(url)
+    url = f"https://news.google.com/rss/search?q={SEARCH_QUERY.replace(' ', '+')}+when:30d"
+    feed = feedparser.parse(url)
 
-        for entry in feed.entries:
-            published = entry.get("published_parsed")
+    for entry in feed.entries:
+        published = entry.get("published_parsed")
 
-            if published:
-                published_dt = datetime(*published[:6], tzinfo=timezone.utc)
-                if not is_recent(published_dt):
-                    continue
+        if published:
+            published_dt = datetime(*published[:6], tzinfo=timezone.utc)
+            if not is_recent(published_dt):
+                continue
 
-            text = entry.title + " " + getattr(entry, "summary", "")
-            items.append((text, entry.link))
+        text = entry.title + " " + getattr(entry, "summary", "")
+        items.append((text, entry.link))
 
     return items
 
 
 # -----------------------------
-# DuckDuckGo fallback
+# DuckDuckGo (general web)
 # -----------------------------
-def fetch_general_web():
+def fetch_duckduckgo():
     items = []
 
-    from bs4 import BeautifulSoup
+    url = f"https://duckduckgo.com/html/?q={SEARCH_QUERY.replace(' ', '+')}"
+    r = requests.get(url, headers=HEADERS)
 
-    for q in SEARCH_QUERIES:
-        url = f"https://duckduckgo.com/html/?q={q.replace(' ', '+')}"
-        r = requests.get(url, headers=HEADERS)
-        soup = BeautifulSoup(r.text, "html.parser")
+    soup = BeautifulSoup(r.text, "html.parser")
 
-        for a in soup.select(".result__a"):
-            title = a.text
-            link = a["href"]
+    for result in soup.select(".result"):
+        title_tag = result.select_one(".result__a")
+
+        if not title_tag:
+            continue
+
+        title = title_tag.get_text(strip=True)
+        link = title_tag.get("href")
+
+        if link and link.startswith("http"):
             items.append((title, link))
 
     return items
 
 
 # -----------------------------
-# BOOLEAN FILTER (YOUR LOGIC)
+# BOOLEAN FILTER (FINAL LOGIC)
 # -----------------------------
 GROUP_A = [
-    "mothra",
     "optical telephoto hyperspectral robotic array",
+    "mothra",
     "gerko"
 ]
 
 GROUP_B = [
-    "telescope",
-    "van dokkum",
-    "dragonfly",
     "space",
-    "cosmic"
+    "cosmic",
+    "universe",
+    "telescope"
 ]
 
 EXCLUDE = [
+    "godzilla",
+    "macs0416",
     "movie",
     "film",
-    "kaiju",
-    "godzilla"
+    "kaiju"
 ]
 
 
@@ -99,8 +96,8 @@ def is_relevant(text):
     t = text.lower()
 
     return (
-        any(term in t for term in GROUP_A)      # (A OR B OR C)
-        and any(term in t for term in GROUP_B)  # AND (X OR Y OR Z...)
+        any(term in t for term in GROUP_A)
+        and any(term in t for term in GROUP_B)
         and not any(term in t for term in EXCLUDE)
     )
 
@@ -126,13 +123,13 @@ def deduplicate(items):
 def fetch_all():
     results = []
 
-    for fn in [fetch_google_news, fetch_general_web]:
+    for fn in [fetch_google_news, fetch_duckduckgo]:
         try:
             results.extend(fn())
         except Exception as e:
             print("Error:", fn.__name__, e)
 
-    # Apply Boolean logic
+    # Apply Boolean filter
     results = [item for item in results if is_relevant(item[0])]
 
     # Deduplicate

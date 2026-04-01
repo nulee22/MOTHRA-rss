@@ -94,17 +94,17 @@ EXCLUDE = [
 
 def is_relevant(text):
     t = text.lower()
+    score = 0
 
-    include_main = ["mothra", "optical telephoto hyperspectral robotic array", "gerko", "dragonfly"]
-    context = ["telescope", "array", "cosmic", "space", "universe"]
+    if "mothra" in t: score += 3
+    if "dragonfly" in t: score += 2
+    if "telescope" in t: score += 1
+    if "cosmic" in t or "space" in t: score += 1
 
-    exclude = ["godzilla", "macs0416", "movie", "film", "kaiju"]
+    if any(x in t for x in ["godzilla", "movie", "kaiju"]):
+        score -= 5
 
-    return (
-        any(term in t for term in include_main)
-        and any(term in t for term in context)
-        and not any(term in t for term in exclude)
-    )
+    return score >= 2
 
 # -----------------------------
 # Deduplication

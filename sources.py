@@ -95,12 +95,16 @@ EXCLUDE = [
 def is_relevant(text):
     t = text.lower()
 
-    return (
-        any(term in t for term in GROUP_A)
-        and any(term in t for term in GROUP_B)
-        and not any(term in t for term in EXCLUDE)
-    )
+    include_main = ["mothra", "optical telephoto hyperspectral robotic array", "gerko", "dragonfly"]
+    context = ["telescope", "array", "cosmic", "space", "universe"]
 
+    exclude = ["godzilla", "macs0416", "movie", "film", "kaiju"]
+
+    return (
+        any(term in t for term in include_main)
+        and any(term in t for term in context)
+        and not any(term in t for term in exclude)
+    )
 
 # -----------------------------
 # Deduplication

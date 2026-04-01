@@ -6,12 +6,18 @@ from bs4 import BeautifulSoup
 HEADERS = {"User-Agent": "mothra-bot"}
 
 # -----------------------------
-# BOOLEAN SEARCH QUERY
+# SIMPLE SEARCH QUERIES (IMPORTANT)
 # -----------------------------
-SEARCH_QUERY = '(("Optical Telephoto Hyperspectral Robotic Array" OR MOTHRA OR Gerko) AND (space OR cosmic OR universe OR telescope)) -Godzilla -MACS0416'
+SEARCH_QUERIES = [
+    "MOTHRA telescope",
+    "Optical Telephoto Hyperspectral Robotic Array",
+    "Dragonfly telescope",
+    "van Dokkum telescope",
+    "cosmic web telescope"
+]
 
 # -----------------------------
-# Time filter (last 30 days)
+# Time filter (30 days)
 # -----------------------------
 def is_recent(published_time):
     cutoff = datetime.now(timezone.utc) - timedelta(days=30)
@@ -19,92 +25,91 @@ def is_recent(published_time):
 
 
 # -----------------------------
-# Google News RSS
+# Google News RSS (PRIMARY SOURCE)
 # -----------------------------
 def fetch_google_news():
     items = []
 
-    url = f"https://news.google.com/rss/search?q={SEARCH_QUERY.replace(' ', '+')}+when:30d"
-    feed = feedparser.parse(url)
+    for q in SEARCH_QUERIES:
+        url = f"https://news.google.com/rss/search?q={q.replace(' ', '+')}+when:30d"
+        feed = feedparser.parse(url)
 
-    for entry in feed.entries:
-        published = entry.get("published_parsed")
+        for entry in feed.entries:
+            published = entry.get("published_parsed")
 
-        if published:
-            published_dt = datetime(*published[:6], tzinfo=timezone.utc)
-            if not is_recent(published_dt):
-                continue
+            if published:
+                published_dt = datetime(*published[:6], tzinfo=timezone.utc)
+                if not is_recent(published_dt):
+                    continue
 
-        text = entry.title + " " + getattr(entry, "summary", "")
-        items.append((text, entry.link))
+            text = entry.title + " " + getattr(entry, "summary", "")
+            items.append((text, entry.link))
 
     return items
 
 
 # -----------------------------
-# DuckDuckGo (general web)
+# DuckDuckGo (GENERAL WEB)
 # -----------------------------
 def fetch_duckduckgo():
     items = []
 
-    url = f"https://duckduckgo.com/html/?q={SEARCH_QUERY.replace(' ', '+')}"
-    r = requests.get(url, headers=HEADERS)
+    for q in SEARCH_QUERIES:
+        url = f"https://duckduckgo.com/html/?q={q.replace(' ', '+')}"
+        r = requests.get(url, headers=HEADERS)
 
-    soup = BeautifulSoup(r.text, "html.parser")
+        soup = BeautifulSoup(r.text, "html.parser")
 
-    for result in soup.select(".result"):
-        title_tag = result.select_one(".result__a")
+        for result in soup.select(".result"):
+            title_tag = result.select_one(".result__a")
 
-        if not title_tag:
-            continue
+            if not title_tag:
+                continue
 
-        title = title_tag.get_text(strip=True)
-        link = title_tag.get("href")
+            title = title_tag.get_text(strip=True)
+            link = title_tag.get("href")
 
-        if link and link.startswith("http"):
-            items.append((title, link))
+            if link and link.startswith("http"):
+                items.append((title, link))
 
     return items
 
 
 # -----------------------------
-# BOOLEAN FILTER (FINAL LOGIC)
+# BOOLEAN FILTER (CORRECT PLACE)
 # -----------------------------
-GROUP_A = [
-    "optical telephoto hyperspectral robotic array",
-    "mothra",
-    "gerko"
-]
-
-GROUP_B = [
-    "space",
-    "cosmic",
-    "universe",
-    "telescope"
-]
-
-EXCLUDE = [
-    "godzilla",
-    "macs0416",
-    "movie",
-    "film",
-    "kaiju"
-]
-
-
 def is_relevant(text):
     t = text.lower()
-    score = 0
 
-    if "mothra" in t: score += 3
-    if "dragonfly" in t: score += 2
-    if "telescope" in t: score += 1
-    if "cosmic" in t or "space" in t: score += 1
+    group_a = [
+        "mothra",
+        "optical telephoto hyperspectral robotic array",
+        "gerko"
+    ]
 
-    if any(x in t for x in ["godzilla", "movie", "kaiju"]):
-        score -= 5
+    group_b = [
+        "space",
+        "cosmic",
+        "universe",
+        "telescope",
+        "dragonfly",
+        "van dokkum"
+    ]
 
-    return score >= 2
+    exclude = [
+        "godzilla",
+        "macs0416",
+        "movie",
+        "film",
+        "kaiju"
+    ]
+
+    return (
+        any(term in t for term in group_a)
+        and any(term in t for term in group_b)
+        and not any(term in t for term in exclude)
+    )
+
 
 # -----------------------------
 # Deduplication
@@ -133,8 +138,12 @@ def fetch_all():
         except Exception as e:
             print("Error:", fn.__name__, e)
 
-    # Apply Boolean filter
+    print("RAW results:", len(results))
+
+    # Apply Boolean filtering
     results = [item for item in results if is_relevant(item[0])]
+
+    print("AFTER filter:", len(results))
 
     # Deduplicate
     results = deduplicate(results)

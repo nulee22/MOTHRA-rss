@@ -17,7 +17,7 @@ def fetch_google_news():
         feed = feedparser.parse(url)
 
         for entry in feed.entries:
-            items.append((entry.title, entry.link))
+            items.append((entry.title + " " + entry.summary, entry.link))
 
     return items
 
@@ -47,8 +47,17 @@ def fetch_general_web():
             items.append((title, link))
     return items
 
+def is_relevant(text):
+    t = text.lower()
+
+    return (
+        ("mothra" in t or "dragonfly" in t or "Gerko" in t or "van Dokkum" in t)
+        and ("telescope" in t or "array" in t)
+        and not any(x in t for x in ["movie", "film", "kaiju"])
+    )
+
 def fetch_all():
-    results = []
+    results = [item for item in results if is_relevant(item[0])]
     for fn in [fetch_google_news, fetch_reddit, fetch_general_web]:
         try:
             results.extend(fn())

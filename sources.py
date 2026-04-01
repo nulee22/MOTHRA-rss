@@ -1,74 +1,143 @@
 import requests
-from bs4 import BeautifulSoup
-
-HEADERS = {"User-Agent": "Mozilla/5.0"}
-
-KEYWORDS = [
-    "MOTHRA",
-    "Optical Telephoto Hyperspectral Robotic Array",
-]
-
 import feedparser
 
+HEADERS = {"User-Agent": "mothra-bot"}
+
+# -----------------------------
+# SEARCH QUERIES (broad intake)
+# -----------------------------
+SEARCH_QUERIES = [
+    "MOTHRA telescope",
+    "Optical Telephoto Hyperspectral Robotic Array",
+    "Gerko telescope",
+    "van Dokkum telescope",
+    "Dragonfly telescope array"
+]
+
+# -----------------------------
+# Google News RSS
+# -----------------------------
 def fetch_google_news():
     items = []
-    for kw in KEYWORDS:
-        url = f"https://news.google.com/rss/search?q={kw.replace(' ', '+')}"
+
+    for q in SEARCH_QUERIES:
+        url = f"https://news.google.com/rss/search?q={q.replace(' ', '+')}"
         feed = feedparser.parse(url)
 
         for entry in feed.entries:
-            items.append((entry.title + " " + entry.summary, entry.link))
+            text = entry.title + " " + getattr(entry, "summary", "")
+            items.append((text, entry.link))
 
     return items
 
+
+# -----------------------------
+# Reddit (JSON API)
+# -----------------------------
 def fetch_reddit():
     items = []
-    for kw in KEYWORDS:
-        url = f"https://www.reddit.com/search/?q={kw.replace(' ', '%20')}"
-        r = requests.get(url, headers=HEADERS)
-        soup = BeautifulSoup(r.text, "html.parser")
 
-        for a in soup.select("a[data-click-id='body']"):
-            title = a.text
-            link = "https://reddit.com" + a["href"]
-            items.append((title, link))
+    for q in SEARCH_QUERIES:
+        url = f"https://www.reddit.com/search.json?q={q}&sort=new"
+        r = requests.get(url, headers=HEADERS)
+
+        try:
+            data = r.json()
+            for post in data["data"]["children"]:
+                title = post["data"]["title"]
+                link = "https://reddit.com" + post["data"]["permalink"]
+                items.append((title, link))
+        except:
+            pass
+
     return items
 
+
+# -----------------------------
+# DuckDuckGo (optional)
+# -----------------------------
 def fetch_general_web():
     items = []
-    for kw in KEYWORDS:
-        url = f"https://duckduckgo.com/html/?q={kw.replace(' ', '+')}"
+
+    for q in SEARCH_QUERIES:
+        url = f"https://duckduckgo.com/html/?q={q.replace(' ', '+')}"
         r = requests.get(url, headers=HEADERS)
+
+        from bs4 import BeautifulSoup
         soup = BeautifulSoup(r.text, "html.parser")
 
         for a in soup.select(".result__a"):
             title = a.text
             link = a["href"]
             items.append((title, link))
+
     return items
+
+
+# -----------------------------
+# BOOLEAN FILTER (YOUR LOGIC)
+# -----------------------------
+GROUP_A = [
+    "mothra",
+    "optical telephoto hyperspectral robotic array",
+    "gerko"
+]
+
+GROUP_B = [
+    "telescope",
+    "van dokkum",
+    "dragonfly"
+]
+
+EXCLUDE = [
+    "movie",
+    "film",
+    "kaiju",
+    "godzilla"
+]
+
 
 def is_relevant(text):
     t = text.lower()
 
     return (
-        ("mothra" in t or "dragonfly" in t or "Gerko" in t or "van Dokkum" in t)
-        and ("telescope" in t or "array" in t)
-        and not any(x in t for x in ["movie", "film", "kaiju"])
+        any(term in t for term in GROUP_A)   # (A OR B OR C)
+        and any(term in t for term in GROUP_B)  # AND (X OR Y OR Z)
+        and not any(term in t for term in EXCLUDE)
     )
 
+
+# -----------------------------
+# Deduplication
+# -----------------------------
+def deduplicate(items):
+    seen = set()
+    unique = []
+
+    for title, link in items:
+        if link not in seen:
+            seen.add(link)
+            unique.append((title, link))
+
+    return unique
+
+
+# -----------------------------
+# MASTER FUNCTION
+# -----------------------------
 def fetch_all():
-    results = [item for item in results if is_relevant(item[0])]
+    results = []
+
     for fn in [fetch_google_news, fetch_reddit, fetch_general_web]:
         try:
             results.extend(fn())
         except Exception as e:
             print("Error:", fn.__name__, e)
 
-    seen = set()
-    unique = []
-    for title, link in results:
-        if link not in seen:
-            seen.add(link)
-            unique.append((title, link))
+    # Apply Boolean logic
+    results = [item for item in results if is_relevant(item[0])]
 
-    return unique
+    # Deduplicate
+    results = deduplicate(results)
+
+    return results

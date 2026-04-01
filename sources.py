@@ -21,12 +21,20 @@ def fetch_google_news():
     items = []
 
     for q in SEARCH_QUERIES:
-        url = f"https://news.google.com/rss/search?q={q.replace(' ', '+')}"
+        url = f"https://news.google.com/rss/search?q={q.replace(' ', '+')}+when:30d"
         feed = feedparser.parse(url)
 
         for entry in feed.entries:
-            text = entry.title + " " + getattr(entry, "summary", "")
-            items.append((text, entry.link))
+    published = entry.get("published_parsed")
+
+    if published:
+        published_dt = datetime(*published[:6], tzinfo=timezone.utc)
+
+        if not is_recent(published_dt):
+            continue
+
+    text = entry.title + " " + getattr(entry, "summary", "")
+    items.append((text, entry.link))
 
     return items
 
